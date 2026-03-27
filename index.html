@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2R Dashboard · Unicommerce</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #E8F4FD;
+    --bg2:       #D0E8F8;
+    --surface:   #FFFFFF;
+    --surface2:  #F0F8FF;
+    --border:    #B8D9EF;
+    --accent:    #0284C7;
+    --accent2:   #0EA5E9;
+    --accent3:   #38BDF8;
+    --text:      #0C2D48;
+    --text2:     #1E4D6B;
+    --muted:     #5B8BAA;
+    --sub:       #3D7199;
+    --success:   #059669;
+    --warn:      #D97706;
+    --danger:    #DC2626;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── TOP NAV BAR ── */
+  .nav-bar {
+    background: linear-gradient(135deg, #0284C7 0%, #0EA5E9 60%, #38BDF8 100%);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(2,132,199,.25);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -.01em;
+  }
+  .nav-logo-dot {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    font-family: 'DM Mono', monospace;
+  }
+  .nav-subtitle { font-size: 11px; color: rgba(255,255,255,.75); font-weight: 400; }
+  .nav-right { font-size: 11px; color: rgba(255,255,255,.8); font-family: 'DM Mono', monospace; }
+
+  /* ── UPLOAD SCREEN ── */
+  #upload-screen {
+    min-height: calc(100vh - 52px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 16px; gap: 22px;
+  }
+
+  .upload-card {
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(2,132,199,.12), 0 1px 4px rgba(2,132,199,.08);
+    padding: 40px 36px;
+    width: 100%; max-width: 480px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .upload-icon-wrap {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: linear-gradient(135deg, #0284C7, #38BDF8);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(2,132,199,.35);
+  }
+  .upload-icon-wrap svg { width: 28px; height: 28px; }
+
+  .upload-heading { text-align: center; }
+  .upload-heading h1 { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em; line-height: 1.3; }
+  .upload-heading h1 em { font-style: normal; color: var(--accent); }
+  .upload-heading p { margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.6; font-weight: 400; }
+
+  .drop-zone {
+    width: 100%;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 32px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: all .2s;
+    text-align: center;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #EBF6FE;
+  }
+  .drop-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+  .drop-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  .or-row {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; color: var(--muted); font-size: 11px;
+  }
+  .or-row::before, .or-row::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .browse-btn {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #0284C7, #0EA5E9);
+    color: #fff; border: none; border-radius: 10px;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    box-shadow: 0 4px 14px rgba(2,132,199,.4);
+    letter-spacing: -.01em;
+  }
+  .browse-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(2,132,199,.5); }
+
+  .hint {
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hint::before { content: '🔒'; font-size: 11px; }
+
+  #file-input { display: none; }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    display: none; min-height: calc(100vh - 52px);
+    flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  }
+  .loader-ring {
+    width: 44px; height: 44px;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* ── DASHBOARD ── */
+  #dashboard-screen {
+    display: none;
+    padding: 20px 20px 48px;
+    max-width: 1140px; margin: 0 auto;
+    animation: fadeUp .35s ease both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+  /* file topbar */
+  .file-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(2,132,199,.07);
+  }
+  .file-bar-left { display: flex; flex-direction: column; gap: 1px; }
+  .file-bar-name { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); font-weight: 500; }
+  .file-bar-time { font-size: 11px; color: var(--muted); }
+  .reload-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--sub); font-family: 'Inter', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all .2s; font-weight: 500;
+  }
+  .reload-btn:hover { border-color: var(--accent); color: var(--accent); background: #EBF6FE; }
+
+  /* summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .sc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(2,132,199,.07);
+    position: relative; overflow: hidden;
+  }
+  .sc::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+  }
+  .sc .lbl {
+    font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 8px; font-weight: 600;
+  }
+  .sc .val { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+  .sc .sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* status filters */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filt-btn {
+    border: 1px solid var(--border); background: var(--surface);
+    border-radius: 20px; padding: 5px 14px;
+    font-size: 11px; color: var(--sub); cursor: pointer;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+    transition: all .15s;
+  }
+  .filt-btn:hover { border-color: var(--accent); color: var(--accent); background: #EBF6FE; }
+  .filt-btn.active {
+    background: linear-gradient(135deg, #0284C7, #0EA5E9);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(2,132,199,.3);
+  }
+
+  /* bucket cards */
+  .buckets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px; margin-bottom: 18px;
+  }
+  .bc {
+    border-radius: 14px; padding: 14px 14px 12px;
+    border: 1.5px solid transparent; cursor: pointer;
+    transition: all .15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .bc:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .bc .b-label { font-size: 10px; font-weight: 700; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .07em; }
+  .bc .b-count { font-size: 28px; font-weight: 700; margin: 2px 0; letter-spacing: -.02em; }
+  .bc .b-range { font-size: 10px; margin-bottom: 10px; font-weight: 500; opacity: .8; }
+  .bc .b-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+  .bc .b-rl { font-size: 9px; opacity: .65; font-weight: 500; }
+  .bc .b-rv { font-size: 11px; font-weight: 600; }
+  .bc .bar-track { height: 4px; border-radius: 2px; margin-top: 8px; overflow: hidden; background: rgba(0,0,0,.08); }
+  .bc .bar-fill { height: 4px; border-radius: 2px; }
+  .bc .bar-pct { font-size: 10px; font-weight: 600; text-align: right; margin-top: 3px; }
+
+  /* legend */
+  .legend {
+    display: flex; gap: 16px; margin-bottom: 10px;
+    font-size: 11px; color: var(--muted); flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    box-shadow: 0 1px 4px rgba(2,132,199,.06);
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+  .leg-box { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* section label */
+  .section-label {
+    font-size: 12px; font-weight: 600; color: var(--sub);
+    margin-bottom: 10px; letter-spacing: .01em;
+  }
+
+  /* bar rows */
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-name {
+    width: 148px; font-size: 11px; color: var(--text2);
+    flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; font-weight: 500;
+  }
+  .bar-track-wrap {
+    flex: 1; height: 10px; background: #DAEEF8;
+    border-radius: 5px; position: relative;
+  }
+  .bar-committed { position: absolute; top:0; left:0; height:10px; background: #BAE6FD; border-radius:5px; }
+  .bar-b2c { position: absolute; top:0; left:0; height:10px; background: #0284C7; border-radius:5px; opacity:.9; }
+  .bar-b2b { position: absolute; top:0; left:0; height:5px; background: #059669; border-radius:3px; }
+  .bar-qc  { position: absolute; bottom:0; left:0; height:5px; background: #D97706; border-radius:3px; }
+  .bar-pct-val { width: 52px; font-size: 11px; font-weight: 600; text-align: right; flex-shrink: 0; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 10px; font-weight: 600; width: 82px;
+    text-align: center; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav-bar">
+  <div class="nav-logo">
+    <div class="nav-logo-dot">UC</div>
+    <div>
+      <div>Unicommerce P2R</div>
+      <div class="nav-subtitle">Potential to Realization Dashboard</div>
+    </div>
+  </div>
+  <div class="nav-right" id="nav-date"></div>
+</div>
+
+<!-- UPLOAD -->
+<div id="upload-screen">
+  <div class="upload-card">
+    <div class="upload-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="upload-heading">
+      <h1>Upload your <em>tenant data</em><br>to generate P2R report</h1>
+      <p>Supports CSV or Excel (.xlsx) export from Redash.<br>Reads committed vs actual volume instantly.</p>
+    </div>
+    <div class="drop-zone" id="drop-zone">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div class="drop-label">Drag & drop your file here</div>
+      <div class="drop-sub">Pending_For_Live_Tenants.csv · or .xlsx</div>
+    </div>
+    <div class="or-row">or</div>
+    <button class="browse-btn" onclick="document.getElementById('file-input').click()">
+      Browse & select file
+    </button>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
+    <div class="hint">Your data never leaves this browser — fully private</div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loader-ring"></div>
+  <div class="loading-text" id="loading-text">Reading file…</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen">
+  <div class="file-bar">
+    <div class="file-bar-left">
+      <div class="file-bar-name" id="loaded-filename"></div>
+      <div class="file-bar-time" id="loaded-time"></div>
+    </div>
+    <button class="reload-btn" onclick="resetToUpload()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+      </svg>
+      Upload new file
+    </button>
+  </div>
+
+  <div class="summary-grid" id="summary-grid"></div>
+  <div class="filter-row" id="status-filters"></div>
+  <div class="buckets-grid" id="buckets-grid"></div>
+
+  <div class="legend">
+    <span><span class="leg-box" style="background:#BAE6FD"></span>Committed</span>
+    <span><span class="leg-box" style="background:#0284C7"></span>B2C</span>
+    <span><span class="leg-box" style="background:#059669"></span>B2B</span>
+    <span><span class="leg-box" style="background:#D97706"></span>QC</span>
+  </div>
+
+  <div class="section-label" id="section-label"></div>
+  <div id="bars-container"></div>
+</div>
+
+<script>
+// set nav date
+document.getElementById('nav-date').textContent = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+const BUCKETS = [
+  { key:'exceed',  label:'Over Exceed', range:'>100%',   color:'#0284C7', bg:'#E0F2FE', text:'#075985' },
+  { key:'healthy', label:'Healthy',     range:'75–100%', color:'#059669', bg:'#ECFDF5', text:'#065F46' },
+  { key:'watch',   label:'Watch',       range:'30–75%',  color:'#D97706', bg:'#FFFBEB', text:'#92400E' },
+  { key:'low',     label:'Low',         range:'10–30%',  color:'#EA580C', bg:'#FFF7ED', text:'#9A3412' },
+  { key:'risk',    label:'Risk',        range:'1–10%',   color:'#DC2626', bg:'#FEF2F2', text:'#991B1B' },
+  { key:'zero',    label:'Zero',        range:'0%',      color:'#6B7280', bg:'#F9FAFB', text:'#374151' },
+];
+
+function getBucket(pct) {
+  if (pct>100) return 'exceed'; if (pct>=75) return 'healthy';
+  if (pct>=30) return 'watch';  if (pct>=10) return 'low';
+  if (pct>0)   return 'risk';   return 'zero';
+}
+function fmt(n) {
+  if (n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if (n>=1000)    return (n/1000).toFixed(1)+'K';
+  return String(n);
+}
+
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  showLoading('Reading file…');
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const r = new FileReader();
+    r.onload = e => parseAndRender(e.target.result, file.name);
+    r.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      parseAndRender(XLSX.utils.sheet_to_csv(ws), file.name);
+    };
+    r.readAsArrayBuffer(file);
+  } else {
+    alert('Please upload a .csv or .xlsx file');
+  }
+}
+
+function showLoading(msg) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('loading-text').textContent = msg;
+}
+
+function parseAndRender(csvText, filename) {
+  document.getElementById('loading-text').textContent = 'Building dashboard…';
+  setTimeout(() => {
+    const result = Papa.parse(csvText.trim(), { header:true, skipEmptyLines:true });
+    const data = result.data.map(r => {
+      const norm = {};
+      Object.keys(r).forEach(k => { norm[k.trim()] = (r[k]||'').toString().trim(); });
+      return norm;
+    });
+    renderDashboard(data, filename);
+  }, 400);
+}
+
+let allData = [], activeStatusFilter = 'ALL', activeBucketFilter = 'all';
+
+function renderDashboard(data, filename) {
+  allData = data.map(r => {
+    const committed = parseFloat(r['Monthly_Transactions']||r['committed']||0)||0;
+    const b2c = parseFloat(r['b2c_volume']||r['b2c']||0)||0;
+    const b2b = parseFloat(r['b2b_volume']||r['b2b']||0)||0;
+    const qc  = parseFloat(r['qc_volume'] ||r['qc'] ||0)||0;
+    const actual = b2c+b2b+qc;
+    const pct = committed>0 ? Math.round((actual/committed)*100) : 0;
+    const status = (r['Current_Status']||r['status']||'UNKNOWN').toUpperCase();
+    return { n:r['Instance_Name']||r['n']||'—', committed, b2c, b2b, qc, actual, pct, bucket:getBucket(pct), status };
+  }).filter(r => r.committed>0 || r.actual>0);
+
+  document.getElementById('loaded-filename').textContent = filename;
+  document.getElementById('loaded-time').textContent = 'Loaded at ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  renderSummary(); renderStatusFilters(); renderView();
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('dashboard-screen').style.display = 'block';
+}
+
+function renderSummary() {
+  const d = allData;
+  const tc = d.reduce((s,r)=>s+r.committed,0);
+  const ta = d.reduce((s,r)=>s+r.actual,0);
+  const op = tc>0 ? Math.round((ta/tc)*100) : 0;
+  const pc = op>=75?'#059669':op>=30?'#D97706':'#DC2626';
+  const live = d.filter(r=>r.status==='LIVE').length;
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="sc"><div class="lbl">Total Accounts</div><div class="val">${d.length}</div><div class="sub">in this file</div></div>
+    <div class="sc"><div class="lbl">Live Accounts</div><div class="val" style="color:#059669">${live}</div><div class="sub">status = LIVE</div></div>
+    <div class="sc"><div class="lbl">Committed Vol</div><div class="val">${fmt(tc)}</div><div class="sub">txns / month</div></div>
+    <div class="sc"><div class="lbl">Actual Volume</div><div class="val">${fmt(ta)}</div><div class="sub">B2C + B2B + QC</div></div>
+    <div class="sc"><div class="lbl">Overall P2R</div><div class="val" style="color:${pc}">${op>200?'>200':op}%</div><div class="sub">actual vs committed</div></div>
+  `;
+}
+
+function renderStatusFilters() {
+  const statuses = ['ALL', ...new Set(allData.map(r=>r.status).filter(Boolean).sort())];
+  document.getElementById('status-filters').innerHTML = statuses.map(s =>
+    `<button class="filt-btn ${s===activeStatusFilter?'active':''}" onclick="setStatusFilter('${s}')">${s==='ALL'?'All Statuses':s}${s!=='ALL'?' ('+allData.filter(r=>r.status===s).length+')':''}</button>`
+  ).join('');
+}
+
+function setStatusFilter(s) {
+  activeStatusFilter = s; activeBucketFilter = 'all';
+  renderStatusFilters(); renderView();
+}
+
+function renderView() { renderBuckets(); renderBars(); }
+
+function renderBuckets() {
+  const base = activeStatusFilter==='ALL' ? allData : allData.filter(r=>r.status===activeStatusFilter);
+  document.getElementById('buckets-grid').innerHTML = BUCKETS.map(b => {
+    const g = base.filter(r=>r.bucket===b.key);
+    const committed = g.reduce((s,r)=>s+r.committed,0);
+    const actual    = g.reduce((s,r)=>s+r.actual,0);
+    const vp = committed>0 ? Math.min(Math.round((actual/committed)*100),999) : 0;
+    const bW = Math.min(vp,100);
+    const isActive = activeBucketFilter===b.key;
+    return `<div class="bc" style="background:${b.bg};border-color:${isActive?b.color:b.color+'55'};${isActive?'box-shadow:0 0 0 2px '+b.color+'55;':''}" onclick="setBucketFilter('${b.key}')">
+      <div class="b-label" style="color:${b.text}">${b.label}</div>
+      <div class="b-count" style="color:${b.color}">${g.length}</div>
+      <div class="b-range" style="color:${b.text}">${b.range}</div>
+      <div class="b-row"><span class="b-rl" style="color:${b.text}">Committed</span><span class="b-rv" style="color:${b.color}">${fmt(committed)}</span></div>
+      <div class="b-row"><span class="b-rl" style="color:${b.text}">Actual</span><span class="b-rv" style="color:${b.color}">${fmt(actual)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${bW}%;background:${b.color}"></div></div>
+      <div class="bar-pct" style="color:${b.color}">${vp>200?'>200':vp}% realized</div>
+    </div>`;
+  }).join('');
+}
+
+function setBucketFilter(key) {
+  activeBucketFilter = activeBucketFilter===key?'all':key;
+  renderView();
+}
+
+function renderBars() {
+  const filtered = (activeStatusFilter==='ALL'?allData:allData.filter(r=>r.status===activeStatusFilter))
+    .filter(r => activeBucketFilter==='all' || r.bucket===activeBucketFilter)
+    .sort((a,b)=>b.committed-a.committed);
+  const maxVal = Math.max(...filtered.map(d=>Math.max(d.committed,d.actual)),1);
+  const bInfo  = key => BUCKETS.find(b=>b.key===key);
+
+  let lbl = activeStatusFilter!=='ALL' ? activeStatusFilter : 'All accounts';
+  if (activeBucketFilter!=='all') lbl += ' · '+bInfo(activeBucketFilter).label;
+  lbl += ` — ${filtered.length} accounts`;
+  document.getElementById('section-label').textContent = lbl;
+
+  document.getElementById('bars-container').innerHTML = filtered.map(d => {
+    const b = bInfo(d.bucket);
+    const cW   = Math.round((d.committed/maxVal)*100);
+    const b2cW = Math.min(Math.round((d.b2c/maxVal)*100),100);
+    const b2bW = Math.min(Math.round((d.b2b/maxVal)*100),100);
+    const qcW  = Math.min(Math.round((d.qc/maxVal)*100),100);
+    return `<div class="bar-row">
+      <div class="bar-name" title="${d.n}">${d.n}</div>
+      <div class="bar-track-wrap">
+        <div class="bar-committed" style="width:${cW}%"></div>
+        <div class="bar-b2c" style="width:${b2cW}%"></div>
+        <div class="bar-b2b" style="width:${b2bW}%"></div>
+        <div class="bar-qc"  style="width:${qcW}%"></div>
+      </div>
+      <div class="bar-pct-val" style="color:${b.color}">${d.pct>500?'>500':d.pct}%</div>
+      <span class="pill" style="background:${b.bg};color:${b.text}">${b.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function resetToUpload() {
+  allData=[]; activeStatusFilter='ALL'; activeBucketFilter='all';
+  document.getElementById('dashboard-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  document.getElementById('file-input').value='';
+}
+</script>
+</body>
+</html>
