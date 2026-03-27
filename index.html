@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2R Dashboard Loader</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0E0E10;
+    --surface: #16161A;
+    --border: #2A2A30;
+    --accent: #534AB7;
+    --accent-glow: rgba(83,74,183,0.25);
+    --text: #E8E6F0;
+    --muted: #6B6878;
+    --success: #1D9E75;
+  }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  /* UPLOAD SCREEN */
+  #upload-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    width: 100%;
+    max-width: 520px;
+    animation: fadeUp .5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .logo-area {
+    text-align: center;
+  }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    margin-bottom: 20px;
+  }
+
+  .logo-badge span { color: var(--accent); }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  /* DROP ZONE */
+  .drop-zone {
+    width: 100%;
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all .2s ease;
+    position: relative;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--accent-glow) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity .3s;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #1A1A22;
+  }
+
+  .drop-zone:hover::before, .drop-zone.drag-over::before {
+    opacity: 1;
+  }
+
+  .drop-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #534AB7 0%, #7B72D6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(83,74,183,0.35);
+    position: relative;
+    z-index: 1;
+  }
+
+  .drop-icon svg { width: 24px; height: 24px; }
+
+  .drop-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    position: relative;
+    z-index: 1;
+  }
+
+  .drop-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    position: relative;
+    z-index: 1;
+  }
+
+  #file-input { display: none; }
+
+  .or-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .or-row::before, .or-row::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .browse-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 4px 16px rgba(83,74,183,0.4);
+  }
+
+  .browse-btn:hover {
+    background: #6560D4;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(83,74,183,0.5);
+  }
+
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hint::before {
+    content: '●';
+    color: var(--success);
+    font-size: 8px;
+  }
+
+  /* LOADING STATE */
+  #loading-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    animation: fadeUp .3s ease both;
+  }
+
+  .loader-ring {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* DASHBOARD WRAPPER */
+  #dashboard-screen {
+    display: none;
+    width: 100%;
+    animation: fadeUp .4s ease both;
+  }
+
+  .dash-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 960px;
+    margin: 0 auto 20px;
+    padding: 0 4px;
+  }
+
+  .dash-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dash-filename {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .dash-loaded {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .reload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .reload-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  #dashboard-container {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 24px;
+
+    /* CSS variables the dashboard HTML uses */
+    --color-background-primary: #16161A;
+    --color-background-secondary: #1E1E24;
+    --color-background-tertiary: #2A2A32;
+    --color-text-primary: #E8E6F0;
+    --color-text-secondary: #B0AEC0;
+    --color-text-tertiary: #6B6878;
+    --color-border-secondary: #2A2A30;
+    --color-border-tertiary: #222228;
+    --border-radius-lg: 12px;
+    --border-radius-md: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div class="logo-area">
+    <div class="logo-badge"><span>UC</span> Unicommerce · P2R Viewer</div>
+    <h1>Drop your <em>P2R report</em><br>and go live instantly</h1>
+    <p class="subtitle">Upload any Q-series P2R HTML file.<br>Your dashboard renders right here — no deployment needed.</p>
+  </div>
+
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="drop-label">Drag & drop your HTML file here</div>
+    <div class="drop-sub">q2_fy26_p2r_final.html · any quarter works</div>
+  </div>
+
+  <div class="or-row">or</div>
+
+  <button class="browse-btn" onclick="document.getElementById('file-input').click()">
+    Browse & select file
+  </button>
+  <input type="file" id="file-input" accept=".html">
+
+  <div class="hint">Works fully offline — your data never leaves your browser</div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loader-ring"></div>
+  <div class="loading-text">Extracting dashboard…</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen">
+  <div class="dash-topbar">
+    <div class="dash-meta">
+      <div class="dash-filename" id="loaded-filename">—</div>
+      <div class="dash-loaded" id="loaded-time">—</div>
+    </div>
+    <button class="reload-btn" onclick="resetToUpload()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+      </svg>
+      Load another file
+    </button>
+  </div>
+  <div id="dashboard-container"></div>
+</div>
+
+<script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.html')) loadFile(file);
+    else alert('Please drop an HTML file.');
+  });
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) loadFile(file);
+  });
+
+  function loadFile(file) {
+    document.getElementById('upload-screen').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'flex';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      setTimeout(() => {
+        const html = e.target.result;
+
+        // Extract just the body content (style + div + script)
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const container = document.getElementById('dashboard-container');
+        container.innerHTML = '';
+
+        // Inject styles
+        doc.querySelectorAll('style').forEach(s => {
+          const style = document.createElement('style');
+          style.textContent = s.textContent;
+          container.appendChild(style);
+        });
+
+        // Inject body content (divs, etc.)
+        doc.querySelectorAll('body > *:not(script):not(style)').forEach(el => {
+          container.appendChild(document.importNode(el, true));
+        });
+
+        // Run scripts
+        doc.querySelectorAll('script').forEach(s => {
+          const script = document.createElement('script');
+          script.textContent = s.textContent;
+          container.appendChild(script);
+        });
+
+        document.getElementById('loaded-filename').textContent = file.name;
+        document.getElementById('loaded-time').textContent = 'Loaded at ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('dashboard-screen').style.display = 'block';
+      }, 600);
+    };
+    reader.readAsText(file);
+  }
+
+  function resetToUpload() {
+    document.getElementById('dashboard-screen').style.display = 'none';
+    document.getElementById('dashboard-container').innerHTML = '';
+    document.getElementById('upload-screen').style.display = 'flex';
+    document.getElementById('file-input').value = '';
+  }
+</script>
+</body>
+</html>
